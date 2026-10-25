@@ -1,8 +1,29 @@
+
 [project]
-name = "labs"
+name = "streamstats"
 version = "0.1.0"
-description = "Add your description here"
+description = "Потоковый анализатор CSV и JSONL файлов"
 requires-python = ">=3.12"
-dependencies = [
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
     "pytest>=8.4.2",
+    "ruff>=0.14.0",
 ]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
