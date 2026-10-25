@@ -23,6 +23,8 @@ def test_cli_analyze_multiple_csv_files(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
+    first_file_before = first_file.read_bytes()
+    second_file_before = second_file.read_bytes()
     result = subprocess.run(
         [
             sys.executable,
@@ -70,6 +72,8 @@ def test_cli_analyze_multiple_csv_files(tmp_path: Path) -> None:
     assert report["earliest_timestamp"] == "2026-10-23T10:15:00+00:00"
     assert report["latest_timestamp"] == "2026-10-23T10:18:00+00:00"
     assert report["skipped_count"] == 0
+    assert first_file.read_bytes() == first_file_before
+    assert second_file.read_bytes() == second_file_before
 
 
 def test_cli_skip_invalid_jsonl(tmp_path: Path) -> None:
@@ -261,3 +265,42 @@ def test_csv_and_jsonl_produce_same_report(tmp_path: Path) -> None:
     jsonl_report = json.loads(jsonl_report_file.read_text(encoding="utf-8"))
 
     assert csv_report == jsonl_report
+
+
+def test_cli_empty_csv_creates_zero_report(tmp_path: Path) -> None:
+    input_file = tmp_path / "empty.csv"
+    report_file = tmp_path / "report.json"
+
+    input_file.write_text("", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "streamstats",
+            "analyze",
+            str(input_file),
+            "--format",
+            "csv",
+            "--output",
+            str(report_file),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert report_file.exists()
+
+    report = json.loads(report_file.read_text(encoding="utf-8"))
+
+    assert report == {
+        "total_events": 0,
+        "events_by_level": {},
+        "events_by_source": {},
+        "top_error_sources": [],
+        "earliest_timestamp": None,
+        "latest_timestamp": None,
+        "skipped_count": 0,
+    }
