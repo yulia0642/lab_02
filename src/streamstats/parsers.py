@@ -3,7 +3,7 @@ import json
 import logging
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from streamstats.errors import InvalidEventError, InvalidTimestampError
@@ -37,6 +37,10 @@ def create_event(
         raise InvalidTimestampError(
             f"{filename}: line {line_number}: invalid field 'timestamp'"
         ) from error
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=UTC)
+    else:
+        timestamp = timestamp.astimezone(UTC)
 
     level = row.get("level")
     if not isinstance(level, str) or level not in ALLOWED_LEVELS:
@@ -75,6 +79,27 @@ def parse_csv(
         if reader.fieldnames is None:
             return
 
+        for field_name in reader.fieldnames:
+            if not field_name.strip():
+                raise InvalidEventError(
+                    f"{path}: line 1: empty CSV column name"
+                )
+
+        seen_fields = set()
+        duplicate_fields = set()
+
+        for field_name in reader.fieldnames:
+            if field_name in seen_fields:
+                duplicate_fields.add(field_name)
+            else:
+                seen_fields.add(field_name)
+
+        if duplicate_fields:
+            duplicate_text = ", ".join(sorted(duplicate_fields))
+            raise InvalidEventError(
+                f"{path}: line 1: duplicate CSV columns: {duplicate_text}"
+            )
+
         required_fields = {"timestamp", "level", "source", "message"}
         actual_fields = set(reader.fieldnames)
         missing_fields = required_fields - actual_fields
@@ -89,7 +114,14 @@ def parse_csv(
             line_number = reader.line_num
 
             try:
+                if None in row:
+                    raise InvalidEventError(
+                        f"{path}: line {line_number}: "
+                        "extra values in CSV row"
+                    )
+
                 event = create_event(row, str(path), line_number)
+
             except InvalidEventError as error:
                 if not skip_invalid:
                     raise
