@@ -101,7 +101,7 @@ def test_get_top_error_sources() -> None:
         }
     )
 
-    top_sources = get_top_error_sources(stats)
+    top_sources = get_top_error_sources(stats, limit=5)
 
     assert top_sources == [
         ("payment", 3),

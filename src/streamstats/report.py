@@ -19,7 +19,7 @@ def build_report(
 
     top_error_sources = []
 
-    for source, count in get_top_error_sources(stats):
+    for source, count in get_top_error_sources(stats, limit=5):
         top_error_sources.append(
             {
                 "source": source,
